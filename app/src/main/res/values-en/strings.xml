@@ -13,8 +13,6 @@
     <string name="main_func_summary">Allow use to watch bangumi from other area</string>
     <string name="hide_icon_summary">Not showing icon</string>
     <string name="hide_icon_title">Hide Icon</string>
-    <string name="use_biliplus_summary">Use Biliplus API (Only for oversea user)</string>
-    <string name="use_biliplus_title">Use Biliplus API</string>
     <string name="custom_theme_title">Customize Theme Color</string>
     <string name="custom_theme_summary">Allow user to customize theme color</string>
     <string name="teenagers_mode_dialog_title">Disable Teen Dialog</string>
