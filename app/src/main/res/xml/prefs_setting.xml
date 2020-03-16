@@ -31,6 +31,11 @@
         android:summary="@string/hide_icon_summary"
         android:title="@string/hide_icon_title" />
 
+    <SwitchPreference
+        android:key="simulate"
+        android:summary="@string/simulate_summary"
+        android:title="@string/simulate_title" />
+
     <PreferenceCategory android:title="@string/about">
 
         <Preference
