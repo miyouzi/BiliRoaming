@@ -12,11 +12,16 @@ import android.util.Log as ALog
 object Log {
 
     private val handler by lazy { Handler(Looper.getMainLooper()) }
+    private var toast: Toast? = null
 
     fun toast(msg: String, force: Boolean = false) {
         if (!force && !sPrefs.getBoolean("show_info", true)) return
         handler.post {
-            Toast.makeText(currentContext, "哔哩漫游：$msg", Toast.LENGTH_SHORT).show()
+            toast?.cancel()
+            toast = Toast.makeText(currentContext, "", Toast.LENGTH_SHORT).apply {
+                setText("哔哩漫游：$msg")
+                show()
+            }
         }
     }
 
@@ -27,7 +32,7 @@ object Log {
         if (str.length > maxLength) {
             val chunkCount: Int = str.length / maxLength
             for (i in 0..chunkCount) {
-                val max: Int = 4000 * (i + 1)
+                val max: Int = maxLength * (i + 1)
                 if (max >= str.length) {
                     doLog(f, str.substring(maxLength * i))
                 } else {
@@ -66,6 +71,6 @@ object Log {
         doLog(ALog::w, obj)
     }
 
-    private const val maxLength = 4000
+    private const val maxLength = 3000
 }
 

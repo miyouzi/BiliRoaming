@@ -18,12 +18,57 @@ import java.lang.reflect.Modifier
 
 class MusicNotificationHook(classLoader: ClassLoader) : BaseHook(classLoader) {
 
-    class ActionDesc(var icon: Int? = null, var title: CharSequence? = null, var intent: PendingIntent? = null)
+    class ActionDesc(
+        var icon: Int? = null,
+        var title: CharSequence? = null,
+        var intent: PendingIntent? = null
+    )
 
-    private val bitmapActionClass by Weak { "android.widget.RemoteViews.BitmapReflectionAction".findClass(mClassLoader) }
-    private val reflectionActionClass by Weak { "android.widget.RemoteViews.ReflectionAction".findClass(mClassLoader) }
-    private val onClickActionClass by Weak { "android.widget.RemoteViews.SetOnClickResponse".findClass(mClassLoader) }
-    private val mediaMetadataClass by Weak { "android.support.v4.media.MediaMetadataCompat".findClass(mClassLoader) }
+    private val iconId = getId("icon")
+    private val notificationIconId = getId("notification_icon")
+    private val text1Id = getId("text1")
+    private val text2Id = getId("text2")
+    private val text3Id = getId("text3")
+    private val notificationText1Id = getId("notification_text1")
+    private val notificationText2Id = getId("notification_text2")
+    private val notificationText3Id = getId("notification_text3")
+    private val action1Id = getId("action1")
+    private val action2Id = getId("action2")
+    private val action3Id = getId("action3")
+    private val action4Id = getId("action4")
+    private val notificationAction1Id = getId("notification_action1")
+    private val notificationAction2Id = getId("notification_action2")
+    private val notificationAction3Id = getId("notification_action3")
+    private val notificationAction4Id = getId("notification_action4")
+    private val stopId = getId("stop")
+    private val notificationStopId = getId("notification_stop")
+
+    private val liveNotificationTitleId = getId("live_notification_title")
+    private val liveNotificationSubtitleId = getId("live_notification_subtitle")
+    private val liveNotificationUpNameId = getId("live_notification_up_name")
+    private val liveNotificationStopId = getId("live_notification_stop")
+    private val liveNotificationIconId = getId("live_notification_icon")
+
+    private val bitmapActionClass by Weak {
+        "android.widget.RemoteViews.BitmapReflectionAction".findClass(
+            mClassLoader
+        )
+    }
+    private val reflectionActionClass by Weak {
+        "android.widget.RemoteViews.ReflectionAction".findClass(
+            mClassLoader
+        )
+    }
+    private val onClickActionClass by Weak {
+        "android.widget.RemoteViews.SetOnClickResponse".findClass(
+            mClassLoader
+        )
+    }
+    private val mediaMetadataClass by Weak {
+        "android.support.v4.media.MediaMetadataCompat".findClass(
+            mClassLoader
+        )
+    }
 
     private var position = 0L
     private var speed = 1f
@@ -65,7 +110,7 @@ class MusicNotificationHook(classLoader: ClassLoader) : BaseHook(classLoader) {
         instance.classesList.filter {
             it.startsWith("tv.danmaku.biliplayerv2.service.business.background")
         }.firstOrNull { c ->
-            c.findClass(mClassLoader)?.interfaces?.contains(playerHelperField?.type) ?: false
+            c.findClass(mClassLoader).interfaces.contains(playerHelperField?.type)
         }
     }
 
@@ -73,9 +118,9 @@ class MusicNotificationHook(classLoader: ClassLoader) : BaseHook(classLoader) {
         instance.classesList.filter {
             it.startsWith("com.bilibili.music.app.base.mediaplayer")
         }.firstOrNull { c ->
-            c.findClass(mClassLoader)?.interfaces?.filter {
+            c.findClass(mClassLoader).interfaces.filter {
                 it == playerHelperField?.type
-            }?.count()?.let { it > 0 } ?: false
+            }.count().let { it > 0 }
         }
     }
 
@@ -95,14 +140,15 @@ class MusicNotificationHook(classLoader: ClassLoader) : BaseHook(classLoader) {
         instance.classesList.filter {
             it.startsWith("android.support.v4.media.session")
         }.firstOrNull { c ->
-            c.findClass(mClassLoader)?.declaredMethods?.filter {
+            c.findClass(mClassLoader).declaredMethods.filter {
                 it.name == "onSeekTo"
-            }?.count()?.let { it > 0 } ?: false
+            }.count().let { it > 0 }
         }?.findClass(mClassLoader)
     }
 
     private val playbackStateBuilderClass by lazy {
-        val playbackStateClass = "android.support.v4.media.session.PlaybackStateCompat".findClassOrNull(mClassLoader)
+        val playbackStateClass =
+            "android.support.v4.media.session.PlaybackStateCompat".findClassOrNull(mClassLoader)
         playbackStateClass?.declaredClasses?.firstOrNull { c ->
             c.declaredMethods.filter {
                 it.returnType == playbackStateClass && it.parameterTypes.isEmpty()
@@ -131,24 +177,23 @@ class MusicNotificationHook(classLoader: ClassLoader) : BaseHook(classLoader) {
 
     private val corePlayerOnSeekListenerClass by lazy {
         instance.classesList.filter {
-            instance.playerCoreServiceV2class?.name?.let { name -> it.startsWith(name) } ?: false
+            instance.playerCoreServiceV2Class?.name?.let { name -> it.startsWith(name) } ?: false
         }.firstOrNull { c ->
-            c.findClass(mClassLoader)?.interfaces?.map { it.name }
-                    ?.contains("tv.danmaku.ijk.media.player.IMediaPlayer\$OnSeekCompleteListener")
-                    ?: false
+            c.findClass(mClassLoader).interfaces.map { it.name }
+                .contains("tv.danmaku.ijk.media.player.IMediaPlayer\$OnSeekCompleteListener")
         }?.findClass(mClassLoader)
     }
 
     private val corePlayerMethod by lazy {
         backgroundPlayerField?.type?.declaredMethods?.firstOrNull {
-            instance.playerCoreServiceV2class?.interfaces?.contains(it.returnType) ?: false
+            instance.playerCoreServiceV2Class?.interfaces?.contains(it.returnType) ?: false
         }
     }
 
 
     private val getDurationMethod by lazy {
         try {
-            instance.playerCoreServiceV2class?.getDeclaredMethod("getDuration")?.name
+            instance.playerCoreServiceV2Class?.getDeclaredMethod("getDuration")?.name
         } catch (e: Throwable) {
             "i"
         }
@@ -156,7 +201,7 @@ class MusicNotificationHook(classLoader: ClassLoader) : BaseHook(classLoader) {
 
     private val getCurrentPositionMethod by lazy {
         try {
-            instance.playerCoreServiceV2class?.getDeclaredMethod("getCurrentPosition")?.name
+            instance.playerCoreServiceV2Class?.getDeclaredMethod("getCurrentPosition")?.name
         } catch (e: Throwable) {
             "j"
         }
@@ -164,7 +209,10 @@ class MusicNotificationHook(classLoader: ClassLoader) : BaseHook(classLoader) {
 
     private val seekToMethod by lazy {
         try {
-            instance.playerCoreServiceV2class?.getDeclaredMethod("seekTo", Int::class.javaPrimitiveType)?.name
+            instance.playerCoreServiceV2Class?.getDeclaredMethod(
+                "seekTo",
+                Int::class.javaPrimitiveType
+            )?.name
         } catch (e: Throwable) {
             "a"
         }
@@ -184,7 +232,7 @@ class MusicNotificationHook(classLoader: ClassLoader) : BaseHook(classLoader) {
         instance.classesList.filter {
             it.startsWith("com.bilibili.opd.app.bizcommon.mediaplayer.rx")
         }.firstOrNull { c ->
-            c.findClass(mClassLoader)?.interfaces?.contains(rxMediaPlayerInterface) ?: false
+            c.findClass(mClassLoader).interfaces.contains(rxMediaPlayerInterface)
         }?.findClass(mClassLoader)
     }
 
@@ -216,18 +264,23 @@ class MusicNotificationHook(classLoader: ClassLoader) : BaseHook(classLoader) {
         updateMetadataMethod?.hookBeforeMethod { param ->
             val playerHelper = param.thisObject.getObjectField(playerHelperField?.name)
             metadataField?.isAccessible = true
-            val bundle = metadataField?.get(param.thisObject)?.getObjectFieldAs<Bundle>(metadataBundleField?.name)
-                    ?: return@hookBeforeMethod
+            val bundle = metadataField?.get(param.thisObject)
+                ?.getObjectFieldAs<Bundle>(metadataBundleField?.name)
+                ?: return@hookBeforeMethod
             val currentDuration = bundle.getLong(MediaMetadata.METADATA_KEY_DURATION)
             if (currentDuration != 0L) return@hookBeforeMethod
             param.args[0] = true
             duration = when (playerHelper?.javaClass?.name) {
                 musicHelper ->
-                    playerHelper?.getObjectField(rxMediaPlayerField?.name)?.getObjectField(rxMediaPlayerImplField?.name)?.getObjectField(mediaPlayerField?.name)?.callMethodAs<Long>("getDuration")
-                            ?: 0L
+                    playerHelper?.getObjectField(rxMediaPlayerField?.name)
+                        ?.getObjectField(rxMediaPlayerImplField?.name)
+                        ?.getObjectField(mediaPlayerField?.name)?.callMethodAs<Long>("getDuration")
+                        ?: 0L
                 backgroundHelper ->
-                    playerHelper?.getObjectField(backgroundPlayerField?.name)?.callMethod(corePlayerMethod?.name)?.callMethodAs<Int>(getDurationMethod)?.toLong()
-                            ?: 0L
+                    playerHelper?.getObjectField(backgroundPlayerField?.name)
+                        ?.callMethod(corePlayerMethod?.name)?.callMethodAs<Int>(getDurationMethod)
+                        ?.toLong()
+                        ?: 0L
                 else -> 0L
             }
             bundle.putLong(MediaMetadata.METADATA_KEY_DURATION, duration)
@@ -241,7 +294,10 @@ class MusicNotificationHook(classLoader: ClassLoader) : BaseHook(classLoader) {
             absMusicService?.callMethod(updateStateMethod?.name, lastState)
         }
 
-        mediaSessionCallbackClass?.hookAfterMethod("onSeekTo", Long::class.javaPrimitiveType) { param ->
+        mediaSessionCallbackClass?.hookAfterMethod(
+            "onSeekTo",
+            Long::class.javaPrimitiveType
+        ) { param ->
             position = param.args[0] as Long
             val absMusicService = mediaSessionCallbackClass?.declaredFields?.get(0)?.run {
                 val res = param.thisObject.getObjectField(name)?.run {
@@ -255,9 +311,13 @@ class MusicNotificationHook(classLoader: ClassLoader) : BaseHook(classLoader) {
             val playerHelper = absMusicService?.getObjectField(playerHelperField?.name)
             when (playerHelper?.javaClass?.name) {
                 musicHelper ->
-                    playerHelper?.getObjectField(rxMediaPlayerField?.name)?.getObjectField(rxMediaPlayerImplField?.name)?.getObjectField(mediaPlayerField?.name)?.callMethod("seekTo", position)
+                    playerHelper?.getObjectField(rxMediaPlayerField?.name)
+                        ?.getObjectField(rxMediaPlayerImplField?.name)
+                        ?.getObjectField(mediaPlayerField?.name)?.callMethod("seekTo", position)
                 backgroundHelper ->
-                    playerHelper?.getObjectField(backgroundPlayerField?.name)?.callMethod(corePlayerMethod?.name)?.callMethod(seekToMethod, position.toInt())
+                    playerHelper?.getObjectField(backgroundPlayerField?.name)
+                        ?.callMethod(corePlayerMethod?.name)
+                        ?.callMethod(seekToMethod, position.toInt())
             }
             absMusicService?.callMethod(updateStateMethod?.name, lastState)
         }
@@ -267,16 +327,19 @@ class MusicNotificationHook(classLoader: ClassLoader) : BaseHook(classLoader) {
             val playerHelper = param.thisObject.getObjectField(playerHelperField?.name)
             when (playerHelper?.javaClass?.name) {
                 musicHelper ->
-                    playerHelper?.getObjectField(rxMediaPlayerField?.name)?.getObjectField(rxMediaPlayerImplField?.name)?.getObjectField(mediaPlayerField?.name)?.run {
+                    playerHelper?.getObjectField(rxMediaPlayerField?.name)
+                        ?.getObjectField(rxMediaPlayerImplField?.name)
+                        ?.getObjectField(mediaPlayerField?.name)?.run {
                         position = callMethodAs("getCurrentPosition")
                         speed = callMethodAs("getSpeed", 0.0f)
                     }
-                backgroundHelper -> playerHelper?.getObjectField(backgroundPlayerField?.name)?.callMethod(corePlayerMethod?.name)?.run {
+                backgroundHelper -> playerHelper?.getObjectField(backgroundPlayerField?.name)
+                    ?.callMethod(corePlayerMethod?.name)?.run {
                     position = callMethodAs<Int>(getCurrentPositionMethod).toLong()
                     speed = try {
-                        callMethodAs(instance.getdefaultspeed(), true)
+                        callMethodAs(instance.defaultSpeed(), true)
                     } catch (e: Throwable) {
-                        callMethodAs(instance.getdefaultspeed())
+                        callMethodAs(instance.defaultSpeed())
                     }
                 }
             }
@@ -303,28 +366,13 @@ class MusicNotificationHook(classLoader: ClassLoader) : BaseHook(classLoader) {
         }
 
 
-        instance.musicNotificationHelperClass?.replaceMethod(instance.setNotification(), instance.notificationBuilderClass) {}
+        instance.musicNotificationHelperClass?.replaceMethod(
+            instance.setNotification(),
+            instance.notificationBuilderClass
+        ) {}
 
-        val hooker : Hooker = fun(param: MethodHookParam) {
+        val hooker: Hooker = fun(param: MethodHookParam) {
             val old = param.result as Notification? ?: return
-            val iconId = getId("icon")
-            val notificationIconId = getId("notification_icon")
-            val text1Id = getId("text1")
-            val text2Id = getId("text2")
-            val text3Id = getId("text3")
-            val notificationText1Id = getId("notification_text1")
-            val notificationText2Id = getId("notification_text2")
-            val notificationText3Id = getId("notification_text3")
-            val action1Id = getId("action1")
-            val action2Id = getId("action2")
-            val action3Id = getId("action3")
-            val action4Id = getId("action4")
-            val notificationAction1Id = getId("notification_action1")
-            val notificationAction2Id = getId("notification_action2")
-            val notificationAction3Id = getId("notification_action3")
-            val notificationAction4Id = getId("notification_action4")
-            val stopId = getId("stop")
-            val notificationStopId = getId("notification_stop")
 
             if (old.extras.containsKey("Primitive")) return
 
@@ -334,14 +382,23 @@ class MusicNotificationHook(classLoader: ClassLoader) : BaseHook(classLoader) {
             @Suppress("DEPRECATION")
             val actions = view.getObjectFieldAs<ArrayList<Any>>("mActions")
             val buttons = linkedMapOf(
-                    action1Id to ActionDesc(),
-                    action2Id to ActionDesc(),
-                    action3Id to ActionDesc(),
-                    action4Id to ActionDesc(),
-                    stopId to ActionDesc(),
+                action1Id to ActionDesc(),
+                action2Id to ActionDesc(),
+                action3Id to ActionDesc(),
+                action4Id to ActionDesc(),
+                stopId to ActionDesc(),
             )
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                param.result = Notification.Builder(param.thisObject.getObjectFieldAs<Service>("a"), old.channelId).run {
+                val serviceField = param.thisObject.javaClass.declaredFields.firstOrNull {
+                    it.type.superclass == Service::class.java
+                } ?: return
+                val tokenMethod = serviceField.type.declaredMethods.firstOrNull {
+                    it.returnType.name.endsWith("Token")
+                } ?: return
+                param.result = Notification.Builder(
+                    param.thisObject.getObjectFieldAs<Service>(serviceField.name),
+                    old.channelId
+                ).run {
                     setSmallIcon(old.smallIcon)
                     setColor(old.color)
                     setUsesChronometer(false)
@@ -356,28 +413,47 @@ class MusicNotificationHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                         when (action.javaClass) {
                             bitmapActionClass -> {
                                 when (viewId) {
-                                    iconId, notificationIconId -> setLargeIcon(action.getObjectFieldAs<Bitmap>("bitmap"))
+                                    iconId, notificationIconId -> setLargeIcon(
+                                        action.getObjectFieldAs<Bitmap>(
+                                            "bitmap"
+                                        )
+                                    )
                                 }
                             }
                             reflectionActionClass -> {
                                 when (action.getObjectFieldAs<String>("methodName")) {
                                     "setText" ->
                                         when (viewId) {
-                                            text1Id, notificationText1Id -> setContentTitle(action.getObjectFieldAs<CharSequence>("value"))
-                                            text2Id, notificationText2Id -> setContentText(action.getObjectFieldAs<CharSequence>("value"))
-                                            text3Id, notificationText3Id -> setSubText(action.getObjectFieldAs<CharSequence>("value"))
+                                            text1Id, notificationText1Id, liveNotificationTitleId -> setContentTitle(
+                                                action.getObjectFieldAs<CharSequence>("value")
+                                            )
+                                            text2Id, notificationText2Id, liveNotificationSubtitleId -> setContentText(
+                                                action.getObjectFieldAs<CharSequence>("value")
+                                            )
+                                            text3Id, notificationText3Id, liveNotificationUpNameId -> setSubText(
+                                                action.getObjectFieldAs<CharSequence>("value")
+                                            )
                                             else -> Log.w("Unknown viewId $viewId for setText")
                                         }
                                     "setImageResource" ->
                                         when (viewId) {
-                                            action1Id, notificationAction1Id -> buttons[action1Id]?.icon = action.getObjectFieldAs<Int>("value")
-                                            action2Id, notificationAction2Id -> buttons[action2Id]?.icon = action.getObjectFieldAs<Int>("value")
-                                            action3Id, notificationAction3Id -> buttons[action3Id]?.icon = action.getObjectFieldAs<Int>("value")
-                                            action4Id, notificationAction4Id -> buttons[action4Id]?.icon = action.getObjectFieldAs<Int>("value")
-                                            stopId, notificationStopId -> buttons[stopId]?.icon = action.getObjectFieldAs<Int>("value")
-                                            iconId, notificationIconId -> {
-                                                val originIcon = BitmapFactory.decodeResource(currentContext.resources, action.getObjectFieldAs("value"))
-                                                val largeIcon = originIcon.copy(originIcon.config, true)
+                                            action1Id, notificationAction1Id -> buttons[action1Id]?.icon =
+                                                action.getObjectFieldAs<Int>("value")
+                                            action2Id, notificationAction2Id -> buttons[action2Id]?.icon =
+                                                action.getObjectFieldAs<Int>("value")
+                                            action3Id, notificationAction3Id -> buttons[action3Id]?.icon =
+                                                action.getObjectFieldAs<Int>("value")
+                                            action4Id, notificationAction4Id -> buttons[action4Id]?.icon =
+                                                action.getObjectFieldAs<Int>("value")
+                                            stopId, notificationStopId -> buttons[stopId]?.icon =
+                                                action.getObjectFieldAs<Int>("value")
+                                            iconId, notificationIconId, liveNotificationIconId -> {
+                                                val originIcon = BitmapFactory.decodeResource(
+                                                    currentContext.resources,
+                                                    action.getObjectFieldAs("value")
+                                                )
+                                                val largeIcon =
+                                                    originIcon.copy(originIcon.config, true)
                                                 largeIcon.eraseColor(old.color)
                                                 val canvas = Canvas(largeIcon)
                                                 canvas.drawBitmap(originIcon, 0f, 0f, null)
@@ -390,13 +466,19 @@ class MusicNotificationHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                             }
                             onClickActionClass -> {
                                 val response = action.getObjectField("mResponse")
-                                val pendingIntent = response?.getObjectFieldAs<PendingIntent?>("mPendingIntent")
+                                val pendingIntent =
+                                    response?.getObjectFieldAs<PendingIntent?>("mPendingIntent")
                                 when (viewId) {
-                                    action1Id, notificationAction1Id -> buttons[action1Id]?.intent = pendingIntent
-                                    action2Id, notificationAction2Id -> buttons[action2Id]?.intent = pendingIntent
-                                    action3Id, notificationAction3Id -> buttons[action3Id]?.intent = pendingIntent
-                                    action4Id, notificationAction4Id -> buttons[action4Id]?.intent = pendingIntent
-                                    stopId, notificationStopId -> buttons[stopId]?.intent = pendingIntent
+                                    action1Id, notificationAction1Id -> buttons[action1Id]?.intent =
+                                        pendingIntent
+                                    action2Id, notificationAction2Id -> buttons[action2Id]?.intent =
+                                        pendingIntent
+                                    action3Id, notificationAction3Id -> buttons[action3Id]?.intent =
+                                        pendingIntent
+                                    action4Id, notificationAction4Id -> buttons[action4Id]?.intent =
+                                        pendingIntent
+                                    stopId, notificationStopId, liveNotificationStopId -> buttons[stopId]?.intent =
+                                        pendingIntent
                                     else -> Log.w("Unknown viewId $viewId for onClick")
                                 }
                             }
@@ -425,19 +507,19 @@ class MusicNotificationHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                             }
                         }
                     }
-                    val mediaStyle = Notification.MediaStyle().setShowActionsInCompactView(*when (buttonCount) {
-                        0 -> intArrayOf()
-                        1 -> intArrayOf(0)
-                        2 -> intArrayOf(0, 1)
-                        3 -> intArrayOf(0, 1, 2)
-                        else -> intArrayOf(2, 3, 4)
-                    })
-                    instance.absMusicService()?.let { f ->
-                        instance.mediaSessionToken()?.let { m ->
-                            val token = param.thisObject.getObjectField(f)?.callMethod(m)?.getObjectField("a") as MediaSession.Token
-                            mediaStyle.setMediaSession(token)
+                    val mediaStyle = Notification.MediaStyle().setShowActionsInCompactView(
+                        *when (buttonCount) {
+                            0 -> intArrayOf()
+                            1 -> intArrayOf(0)
+                            2 -> intArrayOf(0, 1)
+                            3 -> intArrayOf(0, 1, 2)
+                            4 -> intArrayOf(1, 2, 3)
+                            else -> intArrayOf(2, 3, 4)
                         }
-                    }
+                    )
+                    val token = param.thisObject.getObjectField(serviceField.name)
+                        ?.callMethod(tokenMethod.name)?.getObjectField("a") as MediaSession.Token
+                    mediaStyle.setMediaSession(token)
                     style = mediaStyle
                     extras.putBoolean("Primitive", true)
                     build()
@@ -446,6 +528,12 @@ class MusicNotificationHook(classLoader: ClassLoader) : BaseHook(classLoader) {
         }
 
         instance.musicNotificationHelperClass?.declaredMethods?.filter {
+            !Modifier.isStatic(it.modifiers) && it.returnType == Notification::class.java
+        }?.forEach {
+            it.hookAfterMethod(hooker)
+        }
+
+        instance.liveNotificationHelperClass?.declaredMethods?.filter {
             !Modifier.isStatic(it.modifiers) && it.returnType == Notification::class.java
         }?.forEach {
             it.hookAfterMethod(hooker)

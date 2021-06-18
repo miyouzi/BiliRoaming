@@ -38,7 +38,7 @@
         <Preference
             android:key="test_upos"
             android:summary="@string/test_upos_summary"
-            android:title="@string/test_upos_title"></Preference>
+            android:title="@string/test_upos_title" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/beautify_category">
@@ -131,12 +131,20 @@
         <SwitchPreference
             android:key="standalone_danmaku_speed"
             android:summary="@string/standalone_danmaku_speed_summary"
-            android:title="@string/standalone_danmaku_speed_title"/>
+            android:title="@string/standalone_danmaku_speed_title" />
 
         <Preference
             android:key="customize_danmaku_config"
             android:summary="@string/customize_danmaku_config_summary"
             android:title="@string/customize_danmaku_config_title" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/pref_backup">
+        <Preference
+            android:key="pref_export"
+            android:title="@string/pref_export_title" />
+        <Preference
+            android:key="pref_import"
+            android:title="@string/pref_import_title" />
     </PreferenceCategory>
     <PreferenceCategory android:title="@string/setting_category">
         <SwitchPreference
@@ -191,6 +199,13 @@
             android:key="customize_home_tab"
             android:summary="@string/customize_home_tab_summary"
             android:title="@string/customize_home_tab_title" />
+        <MultiSelectListPreference
+            android:dependency="hidden"
+            android:entries="@array/home_recommend_entries"
+            android:entryValues="@array/home_recommend_values"
+            android:key="customize_home_recommend"
+            android:summary="@string/customize_home_recommend_summary"
+            android:title="@string/customize_home_recommend_title" />
         <SwitchPreference
             android:dependency="hidden"
             android:key="purify_city"
@@ -198,9 +213,42 @@
             android:title="@string/purify_city_title" />
         <SwitchPreference
             android:dependency="hidden"
+            android:key="hide_low_play_count_recommend"
+            android:summary="@string/hide_low_play_count_recommend_summary"
+            android:title="@string/hide_low_play_count_recommend_title" />
+        <SwitchPreference
+            android:dependency="hidden"
+            android:key="keywords_filter_title_recommend"
+            android:summary="@string/keywords_filter_title_recommend_summary"
+            android:title="@string/keywords_filter_title_recommend_title" />
+        <SwitchPreference
+            android:dependency="hidden"
+            android:key="add_bangumi"
+            android:summary="@string/add_bangumi_summary"
+            android:title="@string/add_bangumi_title" />
+        <SwitchPreference
+            android:dependency="hidden"
+            android:key="add_movie"
+            android:summary="@string/add_movie_summary"
+            android:title="@string/add_movie_title" />
+        <SwitchPreference
+            android:dependency="hidden"
             android:key="search_th"
             android:summary="@string/search_th_summary"
             android:title="@string/search_th_title" />
+        <EditTextPreference
+            android:dependency="hidden"
+            android:key="customize_accessKey"
+            android:summary="@string/customize_accessKey_summary"
+            android:title="@string/customize_accessKey_title" />
+        <Preference
+            android:key="export_video"
+            android:summary="@string/export_video_summary"
+            android:title="@string/export_video_title" />
+        <SwitchPreference
+            android:dependency="hidden"
+            android:key="purify_endpage"
+            android:title="@string/purify_endpage_title" />
     </PreferenceCategory>
 
     <PreferenceCategory

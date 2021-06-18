@@ -8,7 +8,7 @@
     <string name="running_status_enable">已启用</string>
     <string name="running_status_disable">未启用</string>
     <string name="not_running_summary">哔哩漫游未激活</string>
-    <string name="runtime_xposed">运行环境：Xposed/EdXposed</string>
+    <string name="runtime_xposed">运行环境：Xposed</string>
     <string name="runtime_taichi">运行环境：太极</string>
     <string name="main_func_title">解锁番剧限制</string>
     <string name="main_func_summary">使用户可以观看区域外版权番剧</string>
@@ -156,4 +156,22 @@
     <string name="standalone_danmaku_speed_summary">阻止弹幕速度随播放速度变化</string>
     <string name="customize_danmaku_config_title">弹幕设置</string>
     <string name="customize_danmaku_config_summary">更精细的设置</string>
+    <string name="customize_accessKey_title">自定义访问密钥</string>
+    <string name="customize_accessKey_summary">自定义发往解析服务器的访问密钥（调试功能，除非明白自己在做什么，否则保持空白）</string>
+    <string name="export_video_title">导出视频</string>
+    <string name="export_video_summary">只支持默认下载位置</string>
+    <string name="customize_home_recommend_title">净化首页推荐内容</string>
+    <string name="customize_home_recommend_summary">去除首页推荐页面的指定内容（某些旧版可能无效）</string>
+    <string name="pref_backup">备份和还原</string>
+    <string name="pref_export_title">导出配置</string>
+    <string name="pref_import_title">导入配置</string>
+    <string name="hide_low_play_count_recommend_title">隐藏首页低播放量视频</string>
+    <string name="hide_low_play_count_recommend_summary">隐藏首页推送低于指定播放量的视频(默认值:100 最大值:1百万)</string>
+    <string name="add_bangumi_title">添加其他地区番剧</string>
+    <string name="add_bangumi_summary">在首页标签添加大陆/港澳台番剧分页</string>
+    <string name="purify_endpage_title">去除播放完成的推荐页</string>
+    <string name="add_movie_title">添加其他地区影视</string>
+    <string name="add_movie_summary">在首页标签添加大陆/港澳台影视分页</string>
+    <string name="keywords_filter_title_recommend_summary">过滤首页推送标题中包含指定关键词的内容</string>
+    <string name="keywords_filter_title_recommend_title">关键词过滤首页推送</string>
 </resources>

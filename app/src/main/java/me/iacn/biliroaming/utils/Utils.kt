@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager.GET_META_DATA
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import androidx.documentfile.provider.DocumentFile
 import me.iacn.biliroaming.BiliBiliPackage.Companion.instance
 import me.iacn.biliroaming.Constant
 import me.iacn.biliroaming.XposedInit
@@ -35,13 +36,16 @@ class Weak(val initializer: () -> Class<*>?) {
 
 val systemContext: Context
     get() {
-        val activityThread = "android.app.ActivityThread".findClassOrNull(null)?.callStaticMethod("currentActivityThread")!!
+        val activityThread = "android.app.ActivityThread".findClassOrNull(null)
+            ?.callStaticMethod("currentActivityThread")!!
         return activityThread.callMethodAs("getSystemContext")
     }
 
 fun bv2av(bv: String): Long {
     val table = HashMap<Char, Int>()
-    "fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF".forEachIndexed { i, b -> table[b] = i }
+    "fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF".forEachIndexed { i, b ->
+        table[b] = i
+    }
     val r = intArrayOf(11, 10, 3, 8, 4, 6).withIndex().map { (i, p) ->
         table[bv[p]]!! * BigInteger.valueOf(58).pow(i).toLong()
     }.sum()
@@ -69,9 +73,9 @@ fun getVersionCode(packageName: String) = try {
 
 
 val appKey = mapOf(
-        "tv.danmaku.bili" to "1d8b6e7d45233436",
-        "com.bilibili.app.blue" to "07da50c9a0bf829f",
-        "com.bilibili.app.in" to "bb3101000e232e27",
+    "tv.danmaku.bili" to "1d8b6e7d45233436",
+    "com.bilibili.app.blue" to "07da50c9a0bf829f",
+    "com.bilibili.app.in" to "bb3101000e232e27",
 )
 
 val currentContext by lazy { AndroidAppHelper.currentApplication() as Context }
@@ -85,12 +89,14 @@ val is64
     get() = currentContext.applicationInfo.nativeLibraryDir.contains("64")
 
 val platform by lazy {
-    currentContext.packageManager.getApplicationInfo(packageName, GET_META_DATA).metaData.getString("MOBI_APP")
-            ?: when(packageName) {
-                Constant.BLUE_PACKAGE_NAME -> "android_b"
-                Constant.PLAY_PACKAGE_NAME -> "android_i"
-                else -> "android"
-            }
+    currentContext.packageManager.getApplicationInfo(packageName, GET_META_DATA).metaData.getString(
+        "MOBI_APP"
+    )
+        ?: when (packageName) {
+            Constant.BLUE_PACKAGE_NAME -> "android_b"
+            Constant.PLAY_PACKAGE_NAME -> "android_i"
+            else -> "android"
+        }
 }
 
 val logFile by lazy { File(currentContext.externalCacheDir, "log.txt") }
@@ -123,7 +129,7 @@ fun signQuery(query: String?, extraMap: Map<String, String> = emptyMap()): Strin
 }
 
 fun getId(name: String) = instance.ids[name]
-        ?: currentContext.resources.getIdentifier(name, "id", currentContext.packageName)
+    ?: currentContext.resources.getIdentifier(name, "id", currentContext.packageName)
 
 fun getBitmapFromURL(src: String?, callback: (Bitmap?) -> Unit) {
     Thread {
@@ -144,7 +150,8 @@ fun String?.toJSONObject() = JSONObject(this.orEmpty())
 @Suppress("UNCHECKED_CAST")
 fun <T> JSONArray.asSequence() = (0 until length()).asSequence().map { get(it) as T }
 
-operator fun JSONArray.iterator(): Iterator<JSONObject> = (0 until length()).asSequence().map { get(it) as JSONObject }.iterator()
+operator fun JSONArray.iterator(): Iterator<JSONObject> =
+    (0 until length()).asSequence().map { get(it) as JSONObject }.iterator()
 
 fun JSONArray?.orEmpty() = this ?: JSONArray()
 
@@ -156,3 +163,27 @@ fun getStreamContent(input: InputStream) = try {
     Log.e(e)
     null
 }
+
+val gson by lazy { instance.gsonClass?.newInstance() }
+
+/**
+ * @param targetDir 目标文件夹
+ */
+fun DocumentFile.copyTo(context: Context, targetDir: DocumentFile) {
+    val name = this.name ?: return
+    if (this.isDirectory) {
+        val chile = targetDir.findOrCreateDir(name) ?: return
+        this.listFiles().forEach {
+            it.copyTo(context, chile)
+        }
+    } else if (this.isFile) {
+        val type = this.type ?: return
+        val targetFile = targetDir.createFile(type, name) ?: return
+        val `in` = context.contentResolver.openInputStream(this.uri) ?: return
+        val out = context.contentResolver.openOutputStream(targetFile.uri) ?: return
+        `in`.copyTo(out)
+    }
+}
+
+fun DocumentFile.findOrCreateDir(displayName: String) = this.findFile(displayName)
+    ?: this.createDirectory(displayName)

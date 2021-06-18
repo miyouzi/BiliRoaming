@@ -12,13 +12,21 @@ import org.json.JSONException
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.InputStream
+import java.lang.reflect.Method
 import java.net.HttpURLConnection
+import java.util.*
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 
 /**
  * Created by iAcn on 2019/3/29
  * Email i@iacn.me
  */
 class BangumiPlayUrlHook(classLoader: ClassLoader) : BaseHook(classLoader) {
+    var countDownLatch: CountDownLatch? = null
+
     override fun startHook() {
         if (!sPrefs.getBoolean("main_func", false)) return
         Log.d("startHook: BangumiPlayUrl")
@@ -27,7 +35,8 @@ class BangumiPlayUrlHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                 @Suppress("UNCHECKED_CAST")
                 val params = param.args[0] as MutableMap<String, String>
                 if (sPrefs.getBoolean("allow_download", false) &&
-                        params.containsKey("ep_id") && params.containsKey("dl")) {
+                    params.containsKey("ep_id") && params.containsKey("dl")
+                ) {
                     if (sPrefs.getBoolean("fix_download", false) && params["qn"] != "0") {
                         params["dl_fix"] = "1"
                         if (params["fnval"] == "0")
@@ -44,10 +53,15 @@ class BangumiPlayUrlHook(classLoader: ClassLoader) : BaseHook(classLoader) {
             // Found from "b.ecy" in version 5.39.1
             val connection = param.thisObject as HttpURLConnection
             val urlString = connection.url.toString()
-            if (sPrefs.getBoolean("add_4k", false) && (urlString.startsWith("https://app.bilibili.com/x/v2/param")
-                            || urlString.startsWith("https://appintl.biliapi.net/intl/gateway/app/param"))) {
+            if (sPrefs.getBoolean(
+                    "add_4k",
+                    false
+                ) && (urlString.startsWith("https://app.bilibili.com/x/v2/param")
+                        || urlString.startsWith("https://appintl.biliapi.net/intl/gateway/app/param"))
+            ) {
                 val content = getStreamContent(param.result as InputStream)?.toJSONObject()?.let {
-                    val newContent = "{\"code\":0,\"data\":{\"player_pgc_vip_qn\":\"74,112,116,120,125\",\"player_ugc_vip_qn\":\"74,112,116,120,125\"},\"message\":\"0\"}".toJSONObject()
+                    val newContent =
+                        "{\"code\":0,\"data\":{\"player_pgc_vip_qn\":\"74,112,116,120,125\",\"player_ugc_vip_qn\":\"74,112,116,120,125\"},\"message\":\"0\"}".toJSONObject()
                     when {
                         it.optInt("code") == -304 -> {
                             newContent.put("ver", it.optLong("ver"))
@@ -55,8 +69,14 @@ class BangumiPlayUrlHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                         }
                         it.optInt("code", -1) == 0 -> {
                             it.optJSONObject("data")?.run {
-                                put("player_pgc_vip_qn", newContent.optJSONObject("data")?.optString("player_pgc_vip_qn"))
-                                put("player_ugc_vip_qn", newContent.optJSONObject("data")?.optString("player_ugc_vip_qn"))
+                                put(
+                                    "player_pgc_vip_qn",
+                                    newContent.optJSONObject("data")?.optString("player_pgc_vip_qn")
+                                )
+                                put(
+                                    "player_ugc_vip_qn",
+                                    newContent.optJSONObject("data")?.optString("player_ugc_vip_qn")
+                                )
                             }
                             it.toString()
                         }
@@ -66,11 +86,12 @@ class BangumiPlayUrlHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                 param.result = ByteArrayInputStream(content?.toByteArray())
             }
             if (!urlString.startsWith("https://api.bilibili.com/pgc/player/api/playurl") &&
-                    !urlString.startsWith("https://apiintl.biliapi.net/intl/gateway/ogv/player/api/playurl"))
+                !urlString.startsWith("https://apiintl.biliapi.net/intl/gateway/ogv/player/api/playurl")
+            )
                 return@hookAfterMethod
             val queryString = urlString.substring(urlString.indexOf("?") + 1)
             if ((!queryString.contains("ep_id=") && !queryString.contains("module=bangumi"))
-                    || queryString.contains("ep_id=0") /*workaround*/) return@hookAfterMethod
+                || queryString.contains("ep_id=0") /*workaround*/) return@hookAfterMethod
             var content = getStreamContent(param.result as InputStream)
             if (content == null || !isLimitWatchingArea(content)) {
                 if (urlString.contains("dl_fix=1") || urlString.contains("dl=1")) {
@@ -84,6 +105,7 @@ class BangumiPlayUrlHook(classLoader: ClassLoader) : BaseHook(classLoader) {
             // If biliplus is down, we can still get result from proxy server.
             // However, the speed may not be fast.
             content = getPlayUrl(queryString.replace("dl=1", "dl_fix=1"))
+            countDownLatch?.countDown()
             content = content?.let {
                 if (urlString.contains("dl_fix=1") || urlString.contains("dl=1")) {
                     fixDownload(it)
@@ -101,14 +123,18 @@ class BangumiPlayUrlHook(classLoader: ClassLoader) : BaseHook(classLoader) {
 
         "com.bapis.bilibili.pgc.gateway.player.v1.PlayURLMoss".findClassOrNull(mClassLoader)?.run {
             var isDownload = false
-            hookBeforeMethod("playView",
-                    "com.bapis.bilibili.pgc.gateway.player.v1.PlayViewReq") { param ->
+            hookBeforeMethod(
+                "playView",
+                "com.bapis.bilibili.pgc.gateway.player.v1.PlayViewReq"
+            ) { param ->
                 val request = param.args[0]
                 if (sPrefs.getBoolean("allow_download", false)
-                        && request.callMethodAs<Int>("getDownload") >= 1) {
+                    && request.callMethodAs<Int>("getDownload") >= 1
+                ) {
                     if (sPrefs.getBoolean("fix_download", false)
-                            && request.callMethodAs<Long>("getQn") != 0L
-                            && request.callMethodAs<Int>("getFnval") != 0) {
+                        && request.callMethodAs<Long>("getQn") != 0L
+                        && request.callMethodAs<Int>("getFnval") != 0
+                    ) {
                         isDownload = true
                     } else {
                         request.callMethod("setFnval", 0)
@@ -116,12 +142,17 @@ class BangumiPlayUrlHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                     request.callMethod("setDownload", 0)
                 }
             }
-            hookAfterMethod("playView",
-                    "com.bapis.bilibili.pgc.gateway.player.v1.PlayViewReq") { param ->
+            hookAfterMethod(
+                "playView",
+                "com.bapis.bilibili.pgc.gateway.player.v1.PlayViewReq"
+            ) { param ->
                 val request = param.args[0]
                 val response = param.result
-                if (!response.callMethodAs<Boolean>("hasVideoInfo")) {
+                if (!response.callMethodAs<Boolean>("hasVideoInfo")
+                    || needForceProxy(response)
+                ) {
                     val content = getPlayUrl(reconstructQuery(request))
+                    countDownLatch?.countDown()
                     content?.let {
                         Log.d("Has replaced play url with proxy server $it")
                         Log.toast("已从代理服务器获取播放地址")
@@ -137,14 +168,18 @@ class BangumiPlayUrlHook(classLoader: ClassLoader) : BaseHook(classLoader) {
         }
         "com.bapis.bilibili.pgc.gateway.player.v2.PlayURLMoss".findClassOrNull(mClassLoader)?.run {
             var isDownload = false
-            hookBeforeMethod("playView",
-                    "com.bapis.bilibili.pgc.gateway.player.v2.PlayViewReq") { param ->
+            hookBeforeMethod(
+                "playView",
+                "com.bapis.bilibili.pgc.gateway.player.v2.PlayViewReq"
+            ) { param ->
                 val request = param.args[0]
                 if (sPrefs.getBoolean("allow_download", false)
-                        && request.callMethodAs<Int>("getDownload") >= 1) {
+                    && request.callMethodAs<Int>("getDownload") >= 1
+                ) {
                     if (sPrefs.getBoolean("fix_download", false)
-                            && request.callMethodAs<Long>("getQn") != 0L
-                            && request.callMethodAs<Int>("getFnval") != 0) {
+                        && request.callMethodAs<Long>("getQn") != 0L
+                        && request.callMethodAs<Int>("getFnval") != 0
+                    ) {
                         isDownload = true
                     } else {
                         request.callMethod("setFnval", 0)
@@ -152,16 +187,24 @@ class BangumiPlayUrlHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                     request.callMethod("setDownload", 0)
                 }
             }
-            hookAfterMethod("playView",
-                    "com.bapis.bilibili.pgc.gateway.player.v2.PlayViewReq") { param ->
+            hookAfterMethod(
+                "playView",
+                "com.bapis.bilibili.pgc.gateway.player.v2.PlayViewReq"
+            ) { param ->
                 val request = param.args[0]
                 val response = param.result
+                    ?: "com.bapis.bilibili.pgc.gateway.player.v2.PlayViewReply".findClass(
+                        mClassLoader
+                    ).new()
                 if (!response.callMethodAs<Boolean>("hasVideoInfo") ||
-                        (response.callMethodAs("hasViewInfo") &&
-                                response.callMethod("getViewInfo")?.callMethodAs<Boolean>("hasDialog") == true) &&
-                        response.callMethod("getViewInfo")?.callMethod("getDialog")?.callMethodAs<String>("getType") == "area_limit"
+                    (response.callMethodAs("hasViewInfo") &&
+                            response.callMethod("getViewInfo")
+                                ?.callMethodAs<Boolean>("hasDialog") == true) &&
+                    response.callMethod("getViewInfo")?.callMethod("getDialog")
+                        ?.callMethodAs<String>("getType") == "area_limit"
                 ) {
                     val content = getPlayUrl(reconstructQuery(request))
+                    countDownLatch?.countDown()
                     content?.let {
                         Log.d("Has replaced play url with proxy server $it")
                         Log.toast("已从代理服务器获取播放地址")
@@ -172,8 +215,14 @@ class BangumiPlayUrlHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                         if (response.callMethodAs("hasViewInfo")) {
                             response.callMethod("getViewInfo")?.callMethod("getDialog")?.run {
                                 callMethod("setMsg", "获取播放地址失败")
-                                callMethod("getTitle")?.callMethod("setText", "获取播放地址失败。请检查哔哩漫游设置里的解析服务器设置。")
-                                callMethod("getImage")?.callMethod("setUrl", "https://i0.hdslb.com/bfs/album/08d5ce2fef8da8adf91024db4a69919b8d02fd5c.png")
+                                callMethod("getTitle")?.callMethod(
+                                    "setText",
+                                    "获取播放地址失败。请检查哔哩漫游设置里的解析服务器设置。"
+                                )
+                                callMethod("getImage")?.callMethod(
+                                    "setUrl",
+                                    "https://i0.hdslb.com/bfs/album/08d5ce2fef8da8adf91024db4a69919b8d02fd5c.png"
+                                )
                             }
                         }
                     }
@@ -183,39 +232,75 @@ class BangumiPlayUrlHook(classLoader: ClassLoader) : BaseHook(classLoader) {
             }
         }
 
-        "com.bapis.bilibili.community.service.dm.v1.DMMoss".findClassOrNull(mClassLoader)?.hookAfterMethod("dmView", "com.bapis.bilibili.community.service.dm.v1.DmViewReq") { param ->
-            val oid = param.args[0].callMethod("getOid").toString()
-            // TODO: For cached bangumi's, we don't know if they need to get subtitles from thailand api.
-            //       Actually, when watch_platform==1, it should use subtitles,
-            //       and if it does not contains any subtitle, it means it's from thailand.
-            //       However, for cached bangumi's, we don't know watch_platform.
-            //       One way is to get the information from entry.json and store that to
-            //       lastSeasonInfo as online bangumi's.
-            if (lastSeasonInfo.containsKey("watch_platform") && lastSeasonInfo["watch_platform"] == "1"
-                    && lastSeasonInfo.containsKey(oid) && param.result.callMethod("getSubtitle")?.callMethod("getSubtitlesCount") == 0) {
-                val result = getThailandSubtitles(lastSeasonInfo[oid])?.toJSONObject()
-                        ?: return@hookAfterMethod
-                if (result.optInt("code") != 0) return@hookAfterMethod
-                val data = result.optJSONObject("data") ?: return@hookAfterMethod
-                val subtitles = data.optJSONArray("subtitles").orEmpty()
-                if (subtitles.length() == 0) return@hookAfterMethod
-                val newResBuilder = DmViewReply.newBuilder(DmViewReply.parseFrom(param.result.callMethodAs<ByteArray>("toByteArray")))
-                newResBuilder.subtitle = VideoSubtitle.newBuilder().run {
-                    for (subtitle in subtitles) {
-                        addSubtitles(SubtitleItem.newBuilder().run {
-                            id = subtitle.optLong("id")
-                            idStr = subtitle.optLong("id").toString()
-                            subtitleUrl = subtitle.optString("url")
-                            lan = subtitle.optString("key")
-                            lanDoc = subtitle.optString("title")
-                            build()
-                        })
+        "com.bapis.bilibili.community.service.dm.v1.DMMoss".findClassOrNull(mClassLoader)
+            ?.hookAfterMethod(
+                "dmView",
+                "com.bapis.bilibili.community.service.dm.v1.DmViewReq"
+            ) { param ->
+                val oid = param.args[0].callMethod("getOid").toString()
+                // TODO: For cached bangumi's, we don't know if they need to get subtitles from thailand api.
+                //       Actually, when watch_platform==1, it should use subtitles,
+                //       and if it does not contains any subtitle, it means it's from thailand.
+                //       However, for cached bangumi's, we don't know watch_platform.
+                //       One way is to get the information from entry.json and store that to
+                //       lastSeasonInfo as online bangumi's.
+                var tryThailand =
+                    lastSeasonInfo.containsKey("watch_platform") && lastSeasonInfo["watch_platform"] == "1"
+                            && lastSeasonInfo.containsKey(oid) &&
+                            (param.result == null || param.result.callMethod("getSubtitle")
+                                ?.callMethod("getSubtitlesCount") == 0)
+                if (!tryThailand && !lastSeasonInfo.containsKey("area")) {
+                    countDownLatch = CountDownLatch(1)
+                    try {
+                        countDownLatch?.await(5, TimeUnit.SECONDS)
+                    } catch (ignored: Throwable) {
                     }
-                    build()
+                    tryThailand =
+                        lastSeasonInfo.containsKey("area") && lastSeasonInfo["area"] == "th"
                 }
-                param.result = param.result.javaClass.callStaticMethod("parseFrom", newResBuilder.build().toByteArray())
+                if (tryThailand) {
+                    Log.d("Getting thailand subtitles")
+                    val subtitles = if (lastSeasonInfo.containsKey("sb$oid")) {
+                        Log.d("Got from season")
+                        JSONArray(lastSeasonInfo["sb$oid"])
+                    } else {
+                        val result = getThailandSubtitles(
+                            lastSeasonInfo[oid] ?: lastSeasonInfo["epid"]
+                        )?.toJSONObject() ?: return@hookAfterMethod
+                        if (result.optInt("code") != 0) return@hookAfterMethod
+                        val data = result.optJSONObject("data") ?: return@hookAfterMethod
+                        Log.d("Got from subtitle api")
+                        data.optJSONArray("subtitles").orEmpty()
+                    }
+                    if (subtitles.length() == 0) return@hookAfterMethod
+                    val newResBuilder = param.result?.let {
+                        DmViewReply.newBuilder(
+                            DmViewReply.parseFrom(
+                                param.result.callMethodAs<ByteArray>("toByteArray")
+                            )
+                        )
+                    } ?: run {
+                        DmViewReply.newBuilder()
+                    }
+                    newResBuilder.subtitle = VideoSubtitle.newBuilder().run {
+                        for (subtitle in subtitles) {
+                            addSubtitles(SubtitleItem.newBuilder().run {
+                                id = subtitle.optLong("id")
+                                idStr = subtitle.optLong("id").toString()
+                                subtitleUrl = subtitle.optString("url")
+                                lan = subtitle.optString("key")
+                                lanDoc = subtitle.optString("title")
+                                build()
+                            })
+                        }
+                        build()
+                    }
+                    param.result = (param.method as Method).returnType.callStaticMethod(
+                        "parseFrom",
+                        newResBuilder.build().toByteArray()
+                    )
+                }
             }
-        }
     }
 
     private fun fixDownload(content: String): String {
@@ -229,7 +314,8 @@ class BangumiPlayUrlHook(classLoader: ClassLoader) : BaseHook(classLoader) {
         var audioId = 0
         for (video in videos.orEmpty()) {
             if (video.optInt("id") == quality
-                    && video.optInt("codecid") == json.optInt("video_codecid")) {
+                && video.optInt("codecid") == json.optInt("video_codecid")
+            ) {
                 preservedVideo = video
             }
         }
@@ -249,7 +335,8 @@ class BangumiPlayUrlHook(classLoader: ClassLoader) : BaseHook(classLoader) {
 
     private fun fixDownloadProto(response: Any): Any {
         val serializedRequest = response.callMethodAs<ByteArray>("toByteArray")
-        val newRes = fixDownloadProto(PlayViewReply.newBuilder(PlayViewReply.parseFrom(serializedRequest)))
+        val newRes =
+            fixDownloadProto(PlayViewReply.newBuilder(PlayViewReply.parseFrom(serializedRequest)))
         val serializedResponse = newRes.toByteArray()
         return response.javaClass.callStaticMethod("parseFrom", serializedResponse)!!
     }
@@ -257,14 +344,16 @@ class BangumiPlayUrlHook(classLoader: ClassLoader) : BaseHook(classLoader) {
     private fun fixDownloadProto(builder: PlayViewReply.Builder) = builder.run {
         videoInfo = VideoInfo.newBuilder(builder.videoInfo).run {
             var audioId = 0
+            var setted = false
             val streams = streamListList.map {
-                if (it.streamInfo.quality != quality && it.dashVideo.codecid == videoCodecid) {
+                if (it.streamInfo.quality != quality || setted) {
                     Stream.newBuilder(it).run {
                         clearContent()
                         build()
                     }
                 } else {
                     audioId = it.dashVideo.audioId
+                    setted = true
                     it
                 }
             }
@@ -288,6 +377,12 @@ class BangumiPlayUrlHook(classLoader: ClassLoader) : BaseHook(classLoader) {
     } catch (e: JSONException) {
         Log.e(e)
         false
+    }
+
+    private fun needForceProxy(response: Any): Boolean {
+        if (sPrefs.getString("customize_accessKey", "").isNullOrBlank()) return false
+        val serializedRequest = response.callMethodAs<ByteArray>("toByteArray")
+        return PlayViewReply.parseFrom(serializedRequest).business.isPreview
     }
 
     private fun reconstructQuery(request: Any): String? {
@@ -364,7 +459,8 @@ class BangumiPlayUrlHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                         dashVideo = DashVideo.newBuilder().run {
                             video.run {
                                 baseUrl = optString("base_url")
-                                for (bk in optJSONArray("backup_url").orEmpty().asSequence<String>())
+                                for (bk in optJSONArray("backup_url").orEmpty()
+                                    .asSequence<String>())
                                     addBackupUrl(bk)
                                 bandwidth = optInt("bandwidth")
                                 codecid = optInt("codecid")
@@ -408,7 +504,8 @@ class BangumiPlayUrlHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                                     addSegment(ResponseUrl.newBuilder().run {
                                         segment.run {
                                             length = optLong("length")
-                                            for (bk in optJSONArray("backup_url").orEmpty().asSequence<String>())
+                                            for (bk in optJSONArray("backup_url").orEmpty()
+                                                .asSequence<String>())
                                                 addBackupUrl(bk)
                                             md5 = optString("md5")
                                             order = optInt("order")
@@ -431,7 +528,8 @@ class BangumiPlayUrlHook(classLoader: ClassLoader) : BaseHook(classLoader) {
                 isPreview = jsonContent.optInt("is_preview", 0) == 1
                 build()
             }
-            val serializedResponse = (if (isDownload) fixDownloadProto(builder) else builder.build()).toByteArray()
+            val serializedResponse =
+                (if (isDownload) fixDownloadProto(builder) else builder.build()).toByteArray()
             return response.javaClass.callStaticMethod("parseFrom", serializedResponse)!!
         } catch (e: Throwable) {
             Log.e(e)
